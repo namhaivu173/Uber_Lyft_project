@@ -1,0 +1,2 @@
+GASREGW.csv was downloaded from: 
+https://www.eia.gov/dnav/pet/hist/LeafHandler.ashx?n=PET&s=EMM_EPMMR_PTE_YBOS_DPG&f=W
