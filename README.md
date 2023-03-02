@@ -25,8 +25,8 @@ Please view the Jupyter Notebook file using NBViewer for the best experience: ht
 
 ## III. Files shared:
 
-- IPython Notebook: contains a comprehensive project that fulfill all main goals
-- R: contains only EDA & classification models
+- IPython Notebook: comprehensive project that fulfills all main goals
+- R: mini-version that contains only EDA section & logistic regression model
 - R Image Outputs folder: contains visualization outputs from the R script
 - Rar. file: contains the data set used for this project
 - GASREGW.csv: contains the weekly price of regular gasoline, used in the R script as an additional feature
