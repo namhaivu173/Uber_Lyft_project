@@ -1,13 +1,15 @@
 # Uber & Lyft Analysis Project
-
 <!---![alt text](https://www.ridester.com/wp-content/uploads/2021/09/uber_vs_lyft_overview_1.jpg) --->
+<!---!<p align="center">
+<i>(Image Source: https://www.ridester.com/uber-vs-lyft/)</i>
+</p> --->
 
 <p align="center">
 <img src="https://www.ridester.com/wp-content/uploads/2021/09/uber_vs_lyft_overview_1.jpg" 
-alt="" title="Source: https://www.ridester.com/uber-vs-lyft/" width="80%" height="80%">
+alt="" title="Image Source: https://www.ridester.com/uber-vs-lyft/" width="80%" height="80%">
 </p>
 
-Please view the Jupyter Notebook file using NBViewer for best experience: https://nbviewer.org/github/namhaivu173/Uber_Lyft_project/blob/master/Uber_Lyft_Analysis.ipynb
+Please view the Jupyter Notebook file using NBViewer for the best experience: https://nbviewer.org/github/namhaivu173/Uber_Lyft_project/blob/master/Uber_Lyft_Analysis.ipynb
 
 ## I. Data set:
 
@@ -16,6 +18,7 @@ Please view the Jupyter Notebook file using NBViewer for best experience: https:
 
 ## II. Main goals:
 
-- Explore the main differences in characteristics between Lyft & Uber services
-- Examine the major factors influencing the prices of Lyft & Uber
-- Examine the major factors determining whether prices will surge or not
+- Perform data cleaning, EDA, and conduct hypothesis tests to explore the main differences in characteristics between Lyft & Uber services
+- Visualize insights using interactive maps and charts
+- Construct regression models to examine the major factors influencing the prices of Lyft & Uber
+- Construct classificatation models to examine the major factors determining whether prices will surge or not
