@@ -1,6 +1,7 @@
-# Uber & Lyft Analysis Project
+<h1 align="center">
+Uber & Lyft Analysis Project
+</h1>
 <!---![alt text](https://www.ridester.com/wp-content/uploads/2021/09/uber_vs_lyft_overview_1.jpg) --->
-
 <p align="center">
 <img src="https://www.ridester.com/wp-content/uploads/2021/09/uber_vs_lyft_overview_1.jpg" 
 alt="" title="Image Source: https://www.ridester.com/uber-vs-lyft/" width="80%" height="80%">
