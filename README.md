@@ -1,12 +1,12 @@
 # Uber & Lyft Analysis Project
 <!---![alt text](https://www.ridester.com/wp-content/uploads/2021/09/uber_vs_lyft_overview_1.jpg) --->
-<!---!<p align="center">
-<i>(Image Source: https://www.ridester.com/uber-vs-lyft/)</i>
-</p> --->
 
 <p align="center">
 <img src="https://www.ridester.com/wp-content/uploads/2021/09/uber_vs_lyft_overview_1.jpg" 
 alt="" title="Image Source: https://www.ridester.com/uber-vs-lyft/" width="80%" height="80%">
+</p>
+<p align="center">
+<i>(Image Source: https://www.ridester.com/uber-vs-lyft/)</i>
 </p>
 
 Please view the Jupyter Notebook file using NBViewer for the best experience: https://nbviewer.org/github/namhaivu173/Uber_Lyft_project/blob/master/Uber_Lyft_Analysis.ipynb
@@ -22,3 +22,9 @@ Please view the Jupyter Notebook file using NBViewer for the best experience: ht
 - Visualize insights using interactive maps and charts
 - Construct regression models to examine the major factors influencing the prices of Lyft & Uber
 - Construct classificatation models to examine the major factors determining whether prices will surge or not
+
+## III. Files shared:
+
+- IPython Notebook: contains a comprehensive project that fulfill all main goals
+- R: contains only EDA & classification models
+- R Image Outputs: contains visualization outputs from the R script
