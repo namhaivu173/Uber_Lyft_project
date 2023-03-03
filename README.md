@@ -14,7 +14,7 @@ Please view the Jupyter Notebook file using NBViewer for the best experience: ht
 
 ## I. Data set:
 
-- Download from Kaggle: https://www.kaggle.com/datasets/brllrb/uber-and-lyft-dataset-boston-ma
+- Downloaded from Kaggle: https://www.kaggle.com/datasets/brllrb/uber-and-lyft-dataset-boston-ma
 - Show information of Lyft & Uber rideshare trips in Boston, along with weather conditions at the time
 
 ## II. Main goals:
@@ -29,5 +29,5 @@ Please view the Jupyter Notebook file using NBViewer for the best experience: ht
 - IPython Notebook: comprehensive project that fulfills all main goals
 - R: mini-version that contains only EDA section & logistic regression model
 - R Image Outputs folder: contains visualization outputs from the R script
-- Rar. file: contains the data set used for this project
+- Compressed .rar file: contains the data set used for this project
 - GASREGW.csv: contains the weekly price of regular gasoline, used in the R script as an additional feature
