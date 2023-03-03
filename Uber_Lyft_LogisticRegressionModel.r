@@ -144,6 +144,7 @@ df_lyft <-
   group_by(day_of_week,hour) %>% 
   summarize(Count = n())
 
+# Heatmap by day of week and hour
 df_lyft$day_of_week <- factor(df_lyft$day_of_week,
                                 levels = c("Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"))
 
@@ -156,6 +157,7 @@ ggplot(df_lyft, aes(as.factor(hour), as.factor(day_of_week), fill= Count)) +
        title=expression(bold("Lyft usage frequencies by day & hour"))) +
   theme(plot.title = element_text(hjust = 0.5))
 
+# Heatmap by day of month and month
 df_lyft_month <-
   df_ride3 %>%
   subset(cab_type == "Lyft") %>%
@@ -182,6 +184,7 @@ df_uber <-
   group_by(day_of_week,hour) %>% 
   summarize(Count = n())
 
+# Heatmap by day of week and hour
 df_uber$day_of_week <- factor(df_uber$day_of_week,
                               levels = c("Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"))
 
