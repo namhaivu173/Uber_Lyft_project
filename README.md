@@ -7,7 +7,7 @@ Uber & Lyft Analysis Project
 alt="" title="Image Source: https://www.ridester.com/uber-vs-lyft/" width="80%" height="80%">
 </p>
 <p align="center">
-<i>(Image Source: https://www.ridester.com/uber-vs-lyft/)</i>
+<sup><i>(Image Source: https://www.ridester.com/uber-vs-lyft/)</i></sup>
 </p>
 
 Please view the Jupyter Notebook file using NBViewer for the best experience: https://nbviewer.org/github/namhaivu173/Uber_Lyft_project/blob/master/Uber_Lyft_Analysis.ipynb
