@@ -1,9 +1,5 @@
 # Uber & Lyft data analysis
 
-# Main goals:
-# 1. Perform data cleaning and EDA on the data set
-# 2. Construct classification model to predict whether ride-share price will surge or not
-
 # Libraries installation
 install_load_package <- function(pkg){
   new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
@@ -12,13 +8,13 @@ install_load_package <- function(pkg){
   sapply(pkg, suppressPackageStartupMessages(require), character.only = TRUE)
 }
 
-list.of.packages <- c("ggplot2","pls","glmnet","Matrix","smbinning","ROCR","cvms","gbm",
-                      "RCurl","curl","httr","InformationValue","car","caTools","randomForest",
-                      "ISLR","plyr","knitr","dplyr","readxl","scales","reshape2","rpart.plot",
-                      "tidyverse","tibble","RColorBrewer","kableExtra","mctest","rpart","viridis",
-                      "formatR","DescTools","ggpubr","psych","caret","Metrics","reshape","hrbrthemes",
-                      "Information","MASS","e1071","class","pROC","corrplot","mltools","lubridate")
+list.of.packages <- c("ggplot2","pls","glmnet","Matrix","smbinning","ROCR","cvms","gbm","RCurl","curl","httr","InformationValue","car","caTools","randomForest","ISLR","plyr","knitr","dplyr","readxl","scales","reshape2","rpart.plot","tidyverse","tibble","RColorBrewer","kableExtra","mctest","rpart","viridis","formatR","DescTools","ggpubr","psych","caret","Metrics","reshape","hrbrthemes","Information","MASS","e1071","class","pROC","corrplot","mltools","lubridate")
+
 install_load_package(list.of.packages)
+
+# Main goals:
+# 1. Perform data cleaning and EDA on the data set
+# 2. Construct classification model to predict whether ride-share price will surge or not
 
 # Import data
 df_ride <- read.csv("rideshare_kaggle.csv")
