@@ -301,6 +301,7 @@ df_ride4 <- df_ride4 %>%
 df_lyft_surge <- df_ride4[df_ride4$cab_type=="Lyft",c("source", "product", "weather", "distance", "temperature", "windSpeed", "visibility", "pressure", "cloudCover", "ozone", "moonPhase", "hour_of_day", "destination", "day_of_week", "price_surge")]
 df_lyft_surge$cab_type <- NULL
 
+# Convert numerical to binary data type for classification
 df_lyft_surge$price_surge <- if_else(df_lyft_surge$surge_multiplier > 1,1,0)
 char_vars_lyft <- names(select_if(df_lyft_surge,is.character))
 df_lyft_surge$surge_multiplier <- NULL
@@ -313,6 +314,8 @@ for (i in char_vars_lyft){
 
 num_vars_lyft <- names(select_if(df_lyft_surge,is.numeric))
 num_vars_lyft <- num_vars_lyft[!num_vars_lyft %in% c("price_surge")]
+
+# Scale numerical features
 df_lyft_surge2 <- df_lyft_surge
 df_lyft_surge2[num_vars_lyft] <- scale(df_lyft_surge[num_vars_lyft])
 
