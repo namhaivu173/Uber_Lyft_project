@@ -1,3 +1,6 @@
+*.[Rr] linguist-vendored=false
+*.[Rr] linguist-documentation=false
+*.[Rr] linguist-generated=false
 *.R linguist-language=R
 *.r linguist-language=R
 *.ipynb linguist-language=Python
