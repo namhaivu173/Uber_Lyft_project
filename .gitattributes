@@ -1,6 +1,7 @@
-*.[Rr]md linguist-detectable
-*.[Rr] linguist-documentation=false
-*.[Rr] linguist-vendored=false
-*.[Rr] linguist-detectable
-*.[Rr] linguist-language=R
+*.[Rr]md linguist-detectable=true
+*.r linguist-documentation=false
+*.r linguist-generated=false
+*.r linguist-vendored=false
+*.r linguist-detectable=true
+*.r linguist-language=R
 
