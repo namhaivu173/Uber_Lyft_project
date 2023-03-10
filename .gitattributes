@@ -1,4 +1,3 @@
 *.R linguist-language=R
 *.r linguist-language=R
-*.R text=plain
-*.r text=plain
+*.ipynb linguist-language=Python
