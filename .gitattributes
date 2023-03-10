@@ -3,5 +3,5 @@
 *.r linguist-generated=false
 *.r linguist-vendored=false
 *.r linguist-detectable=true
-*.r linguist-language=R
+*.r linguist-language=Rscript
 
