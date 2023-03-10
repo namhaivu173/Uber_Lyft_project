@@ -1,5 +1,6 @@
 *.[Rr]md linguist-detectable
-*.[Rr] linguist-language=R
+*.[Rr] linguist-documentation=false
+*.[Rr] linguist-vendored=false
 *.[Rr] linguist-detectable
-Uber_Lyft_LogisticRegressionModel.r linguist-language=R
+*.[Rr] linguist-language=R
 
