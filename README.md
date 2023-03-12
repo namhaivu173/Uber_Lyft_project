@@ -15,7 +15,7 @@ Please view the Jupyter Notebook file using NBViewer for the best experience: ht
 ## I. Data set:
 
 - Downloaded from Kaggle: https://www.kaggle.com/datasets/brllrb/uber-and-lyft-dataset-boston-ma
-- Show information of Lyft & Uber rideshare trips in Boston, along with weather conditions at the time
+- Contains information of Lyft & Uber rideshare trips in Boston, along with various weather conditions at the time
 
 ## II. Main goals:
 
