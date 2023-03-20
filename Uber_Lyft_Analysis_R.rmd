@@ -1,0 +1,1133 @@
+---
+title: | 
+  <center>\vspace{7cm}**Uber & Lyfr Price Predictions**</center>
+author: "Hai Vu"
+date: 'December 14, 2022'
+# date: '`r format(Sys.time(),"%d %B, %Y")`'
+
+output: 
+  pdf_document:
+    latex_engine: xelatex
+  # pandoc_args: --listings
+  # pandoc_args: --wrap=auto
+  toc: true
+  toc_depth: 3
+  number_sections: true
+# fontsize: 11pt
+indent: true
+header-includes:
+  - \usepackage{indentfirst}
+  - \usepackage{ragged2e}
+  - \usepackage[labelformat=empty]{caption}
+  - \usepackage{fvextra}
+  - \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
+  - \usepackage[fontsize=12pt]{scrextend}
+  # - \usepackage{geometry}
+  # - \geometry{top=0.75in,left=3in,bottom=0.75in,right=0.80in}
+  # - \usepackage{listings}
+  # - \lstset{breaklines=true,basicstyle=\ttfamily}
+---
+\pagenumbering{gobble}
+
+```{r message=FALSE, warning=FALSE, results = FALSE, include=FALSE}
+# Libraries installation
+install_load_package <- function(pkg){
+new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
+if (length(new.pkg)) 
+    install.packages(new.pkg, dependencies = TRUE, quiet = TRUE)
+    sapply(pkg, suppressPackageStartupMessages(require), character.only = TRUE)
+}
+
+list.of.packages <- c("ggplot2","pls","glmnet","Matrix","smbinning","ROCR","cvms","gbm","hrbrthemes",
+                      "RCurl","curl","httr","InformationValue","car","caTools","randomForest","stringr",
+                      "ISLR","plyr","knitr","dplyr","readxl","scales","reshape2","rpart.plot","gridExtra",
+                      "tidyverse","tibble","RColorBrewer","kableExtra","mctest","rpart","viridis","arules",
+                      "formatR","DescTools","ggpubr","psych","caret","Metrics","reshape","lubridate",
+                      "Information","MASS","e1071","class","pROC","corrplot","mltools","rattle","tinytex")
+install_load_package(list.of.packages)
+
+#tlmgr_search('/times.sty')   # search for times.sty
+#tlmgr_install('psnfss')      # install the psnfss package
+#tlmgr_update()               # update everything
+
+```
+
+```{r wrap-hook, include=F}
+hook_output = knit_hooks$get('output')
+knit_hooks$set(output = function(x, options) {
+  # this hook is used only when the linewidth option is not NULL
+  if (!is.null(n <- options$linewidth)) {
+    x = knitr:::split_lines(x)
+    # any lines wider than n should be wrapped
+    if (any(nchar(x) > n)) x = strwrap(x, width = n)
+    x = paste(x, collapse = '\n')
+  }
+  hook_output(x, options)
+})
+
+```
+
+```{r setup, include=FALSE}
+# knitr::opts_chunk$set(echo = TRUE, tidy.opts = list(width.cutoff = 80), tidy = TRUE)
+knitr::opts_chunk$set(echo = F, tidy = F, message=F, warning=F, fig.align="center", tinytex.verbose = TRUE)#, linewidth=90)
+# options(width = 100)
+
+```
+
+\newpage
+\pagenumbering{arabic}  
+\thispagestyle{plain}
+\mbox{}
+
+\setcounter{tocdepth}{3}
+\renewcommand{\contentsname}{TABLE OF CONTENTS}
+
+\tableofcontents
+
+\newpage
+# I. INTRODUCTION
+
+In this assignment, I aim to utilize various statistical methodologies to perform exploratory analysis as well as predictive analysis on the ride share data set containing ride-sharing records of 2 companies Uber and Lyft in the city of Boston during the month of November and December in 2018, along with the weather information at the time of transaction. Primarily, I will focus on answering 3 main questions:
+
+* Can we predict the fare prices of Uber & Lyft accurately based on the given information? 
+* What sort of factors influence the changes in price, and how strong are these influences relative to one another?
+* What are the main factors influence the surge in prices, as represented by the "surge_multiplier" feature in the data set?
+
+# II. ANALYSIS
+
+## 1. Data cleaning & feature engineering
+
+First, let's import the ride sharing data set. Below is the overview of the original data set:
+
+```{r, echo=T}
+# Import data set and treat blank cells as NA
+df_ride <- read.csv("rideshare_kaggle.csv", na.strings=c(""," ","NA"))
+str(df_ride, width = 70, strict.width = "cut")
+
+```
+
+The imported data set contains ``r nrow(df_ride)`` observations and ``r ncol(df_ride)`` variables. At first glance, we can see that there are 2 main groups of information presented, where one is about the information of the ride (starting location, ending location, price, type of cab, etc.) and the other describes the weather conditions surrounding that specific ride. This makes sense since weather status may be a factor in determining the fare price for Uber and Lyft. Below are the descriptions of the variables in this data set:
+
+```{r}
+# Variables description
+desc_names <- c(
+'Hour & day & month',
+'source',
+'destination',
+'cab_type',
+'product_id',
+'name',
+'price',
+'distance',
+'surge_multiplier',
+'latitude',
+'longitude',
+'temperature',
+'apparentTemperature',
+'short_summary',
+'long_summary',
+'precipIntensity',
+'precipProbability',
+'Other weather measurements',
+'Timestamps of specific events')
+
+desc_detail <- c(
+'All are integer variables used to record the specific time when each transaction occurred.',
+'Starting location of the ride',
+'Ending location of the ride',
+'Strings used to record the transaction platform, including Uber and lyft.',
+'Unique identification of the ride type',
+'Strings used to record the ride type (e.g: Uber XL from Uber and Lyft XL from Lyft)',
+'Fare price of the ride',
+'Total distance of the ride',
+'Values determining how many times the price is surged',
+'Latitude of each transaction',
+'Longitude of each transaction',
+'Temperature at time of transaction',
+'Apparent temperature at time of transaction',
+'Short description of weather condition at time of transaction',
+'Long description of weather condition at time of transaction',
+'Indicates the amount of precipitation expected within one hour at the current intensity',
+'Probability that the forecast timeframe and location will receive at least 0.01" of rain',
+'humidity, wind speed, wind gust, visibility, UV index, etc.',
+'highest & lowest temperature, wind gust, sunrise, sunset, etc.')
+
+# Description table
+df_info <- as.data.frame(cbind(desc_names,desc_detail))
+colnames(df_info) <- c("Summarized list of variables","Description of variables")
+knitr::kable(df_info, format="latex",
+             booktabs = T,longtable=T,linesep = "",
+             caption="Table 1. Description of the data set variables") %>%
+  kable_styling(position = "center", font_size = 10,
+                latex_options = c("striped","repeat_header")) %>%
+  column_spec(2, width = "11cm")
+
+#df_ride2 <- df_ride %>% mutate_all(na_if,"") # remove blank cells
+```
+
+While importing the data, I replace all blank cells (if any) by NA values so that they can be examined together. I also trim any unnecessary spaces for the categorical variables: 
+
+```{r, echo=T}
+# Remove blank and white space
+df_ride2 <- df_ride %>% mutate_if(is.character, str_trim) # remove white space
+
+```
+
+Next, I check to see if there are any variables containing NA in their records:
+
+```{r}
+# NA check
+col_names <- colnames(df_ride2)
+
+df_na <- sapply(df_ride2, FUN=function(col_names){
+  table(is.na(col_names))
+})
+
+df_na <- t(as.data.frame(df_na))
+df_na <- as.data.frame(df_na[seq(2,nrow(df_na),2),])
+df_na$V2 <- ifelse(df_na$V2 == max(df_na$V1),0,df_na$V2)
+df_na <- df_na[order(df_na$V2),]
+df_na <- rownames_to_column(df_na)
+df_na$rowname <- gsub('.Freq','',df_na$rowname)
+colnames(df_na) <- c("Variables","No blank counts","Blank counts")
+rownames(df_na) <- NULL
+df_na$`No blank counts` <- as.numeric(df_na$`No blank counts`)
+df_na$`Blank counts` <- as.numeric(df_na$`Blank counts`)
+df_na[df_na$`Blank counts` > 0,]
+
+```
+
+After checking, it seems that "price" is the only variable to contain blank values. However, the missing observations only account for ``r round(df_na[1,3]/df_na[1,2]*100,2)`` percent of the entire data set and thus, the invalid amount not too significant. I also want to check how these missing values are distributed among other variables, such as the type of cab:
+
+```{r, echo=T}
+# Check distribution of NA values by product type
+table(df_ride2$name, is.na(df_ride2$price))
+
+```
+
+It seems that Taxi is the only type of ride that have no information on the fare prices in this data set. Thus, we can go ahead and remove all of the missing observations. Using the distinct function, I also remove any potential duplicates and rename some columns to be more comprehensible:
+
+```{r, echo=T}
+# Remove blank rows
+df_ride3 <- na.omit(df_ride2)
+
+# Remove duplicates
+df_ride3 <- distinct(df_ride3)
+
+# Rename columns
+df_ride3 <- df_ride3 %>% 
+  dplyr::rename("product" = "name",
+                "weather" = "icon")
+
+```
+
+```{r}
+# Duplicate check (another way)
+if(nrow(df_ride3) == nrow(distinct(df_ride3))){
+  paste("There are no repeated values in the data set")
+} else {
+  paste("There are",nrow(df_ride3) - nrow(distinct(df_ride3)),
+        "duplicated records in the data set")
+}
+```
+
+Moving on, I want to check the number of unique classes within each categorical variables:
+
+```{r}
+# Check unique values
+char_vars <- c(colnames(select_if(df_ride3,is.character)),"day","month")
+df_char <- df_ride3[char_vars]
+var_uniq <- as.data.frame(lengths(lapply(df_char,unique)))
+var_uniq <- rownames_to_column(var_uniq)
+colnames(var_uniq) <- c("Variable Name","Unique Count")
+var_uniq <- var_uniq[order(-var_uniq$`Unique Count`),]
+rownames(var_uniq) <- NULL
+knitr::kable(var_uniq, "latex",
+             booktabs = T,longtable=T,linesep = "",
+             caption="Table 2. Unique counts of categorical variables") %>%
+  kable_styling(position = "center",
+                latex_options = c("striped","repeat_header"))
+
+```
+
+Looking at the number of unique classes, I am able to identify a number of irrelevant columns, such as ID and timezone. Furthermore, I also notice several redundant numerical columns like timestamp, product_id, and visibility.1, which are replaceable by datetime, product, and visibility, respectively. Thus, my next step is to remove these variables:
+
+```{r, echo=T}
+# Remove redundant columns
+col_remove <- c("id","day","timestamp","timezone","product_id","visibility.1")
+df_ride4 <- df_ride3[,!names(df_ride3) %in% col_remove]
+
+```
+
+After that, I want to convert the variables containing timestamp values into readable time format. I decide to use the decimal hours format, where the hours and minutes are converted into continuous decimal numbers representing a 24-hour time range; for example, 4:30 PM would become 16.5 hours. Below is the function I used to do the transformation and an overview of the data set after the time format transformation was done:
+
+```{r, echo=T}
+# Convert time stamp to decimal hours
+as_dechour <- function(y){
+  y <- format(as.POSIXct(as_datetime(y)), format = "%H:%M")
+  sapply(strsplit(y,":"),
+         function(x) {
+           x <- as.numeric(x)
+           x[1]+x[2]/60
+         }
+  )
+}
+```
+
+```{r, cache=T}
+# Datetime transforming
+#df_ride4$datetime <- df_ride3$datetime
+df_ride4$datetime <- as.POSIXlt.character(df_ride3$datetime,format="%Y-%m-%d %H:%M:%S")
+df_ride4$date <- as.Date.character(df_ride4$datetime,format="%Y-%m-%d")
+df_ride4$month <- unclass(df_ride4$datetime)$mon
+df_ride4$day_of_week <- weekdays(df_ride4$datetime) #(df_ride2$datetime)$wday
+df_ride4$day_of_month <- unclass(df_ride4$datetime)$mday
+
+#df_ride4$timestamp <- as_datetime(df_ride3$timestamp)
+df_ride4$hour_of_day <- as_dechour(df_ride3$timestamp)
+df_ride4$windGustTime <- as_dechour(df_ride3$windGustTime)
+df_ride4$temperatureHighTime <- as_dechour(df_ride3$temperatureHighTime)
+df_ride4$temperatureLowTime <- as_dechour(df_ride3$temperatureLowTime)
+df_ride4$temperatureMaxTime <- as_dechour(df_ride3$temperatureMaxTime)
+df_ride4$temperatureMinTime <- as_dechour(df_ride3$temperatureMinTime)
+df_ride4$apparentTemperatureHighTime <- as_dechour(df_ride3$apparentTemperatureHighTime)
+df_ride4$apparentTemperatureLowTime <- as_dechour(df_ride3$apparentTemperatureLowTime)
+df_ride4$apparentTemperatureMaxTime <- as_dechour(df_ride3$apparentTemperatureMaxTime)
+df_ride4$apparentTemperatureMinTime <- as_dechour(df_ride3$apparentTemperatureMinTime)
+df_ride4$sunriseTime <- as_dechour(df_ride3$sunriseTime)
+df_ride4$sunsetTime <- as_dechour(df_ride3$sunsetTime)
+df_ride4$uvIndexTime <- as_dechour(df_ride3$uvIndexTime)
+
+df_ride4$day_of_week <- factor(df_ride4$day_of_week,
+                              levels = c("Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"))
+```
+```{r, echo=T}
+# Check current look
+str(df_ride4, width = 70, strict.width = "cut")
+
+```
+
+## 2. Predict fare price using linear regression model
+
+### 2.1. Feature selection
+
+Since our target variable is the fare price, I want to examine its distribution for both Uber and Lyft:
+
+```{r}
+boxplot(df_ride4$price~df_ride4$cab_type,col=c("lightblue","pink"),
+        main="Figure 1. Boxplots of fare price by company",
+        xlab="Company",ylab="Fare Price")
+
+```
+
+From figure 1, we can see that there are multiple outliers towards the upper (or right) tail of the distribution. Since linear regression results can be skewed by outliers, I will remove these outliers using the Tukey Method (for each group Uber and Lyft separately) with the hope of improving the model accuracy:
+
+```{r, echo=T}
+# Outliers imputation
+df_uber <- subset(df_ride4,df_ride4$cab_type == "Uber")
+df_lyft <- subset(df_ride4,df_ride4$cab_type == "Lyft")
+
+uber_q25 <- as.numeric(quantile(df_uber$price,.25))
+uber_q75 <- as.numeric(quantile(df_uber$price,.75))
+uber_iqr <- uber_q75 - uber_q25
+
+lyft_q25 <- as.numeric(quantile(df_lyft$price,.25))
+lyft_q75 <- as.numeric(quantile(df_lyft$price,.75))
+lyft_iqr <- lyft_q75 - lyft_q25
+
+df_uber$price <- ifelse(df_uber$price > uber_iqr*1.5 | df_uber$price < -uber_iqr*1.5, NA, df_uber$price)
+df_lyft$price <- ifelse(df_lyft$price > lyft_iqr*1.5 | df_lyft$price < -lyft_iqr*1.5, NA, df_lyft$price)
+
+df_uber2 <- na.omit(df_uber)
+df_lyft2 <- na.omit(df_lyft)
+```
+
+After imputing the outliers, the fare price distribution now looks like the following:
+
+```{r}
+# Plot distribution changes
+df_combine <- rbind(df_uber2,df_lyft2)
+#df_combine$trip <- paste0(df_combine$source," => ",df_combine$destination)
+boxplot(df_combine$price~df_combine$cab_type,col=c("lightblue","pink"),
+        main="Figure 2. Boxplots of fare price by company (without outliers)",
+        xlab="Company",ylab="Fare Price")
+
+```
+
+Next, I want to examine the correlation level between some of the numerical variables. The following correlation matrix below presents that information:
+
+```{r}
+# Correlation matrix
+all_num <- names(select_if(df_combine,is.numeric))
+
+num_vars <- c("price","distance","precipIntensity","precipProbability","temperature","apparentTemperature",
+              "humidity","windSpeed","visibility","cloudCover","dewPoint","hour_of_day","ozone")
+num_vars2 <- c("price","distance","temperature","windSpeed","visibility","cloudCover","ozone","hour_of_day")
+
+remove <- c("surge_multiplier","hour","month","latitude","longitude","day_of_month","windGust","windBearing","uvIndex",
+            num_vars[!num_vars %in% num_vars2],
+            all_num[grepl(c("Time"), all_num, fixed = TRUE) |
+                    grepl(c("apparent"), all_num, fixed = TRUE) |
+                    grepl(c("Min"), all_num, fixed = TRUE) |
+                    grepl(c("Max"), all_num, fixed = TRUE) |
+                    grepl(c("High"), all_num, fixed = TRUE) |
+                    grepl(c("Low"), all_num, fixed = TRUE) ])
+
+pick_num <- all_num[!all_num %in% remove]
+cors <- cor(df_ride4[,c(num_vars,"surge_multiplier")], use="pairwise")
+
+corrplot(cors,type="upper",mar=c(0,0,1.5,0),method="color",
+         tl.cex=0.8,
+         #col=brewer.pal(8,"RdYlBu"),
+         addCoef.col = 1,number.digits = 1,number.cex=0.55,
+         title="Figure 3. Correlation matrix of numerical values")
+
+```
+
+From figure 3, I was able to spot several highly correlated groups of variables:
+
+* Group 1: humidity, dewPoint, visibility, precipIntensity, precipProbability
+* Group 2: temperature, apparentTemperature, dewPoint
+
+To avoid multi-collinearity instances, I want to pick only 1 feature from each group that are not highly correlated with one another. Thus, I pick visibility and temperature and I also believe they may have an impact on the pricing of the Uber & Lyft rides. The remaining numerical features are not correlated with one another, and so I decide to use all of them.
+
+
+As for the categorical variables, I believe the starting location of the trip might influence the fare price more than the destination of the trip because the traffic of Uber/Lyft drivers around the pick-up locations determines can greatly affect pricing (less drivers mean more expensive rides). Meanwhile, the traffic around the destinations are not that important in determining the fare price. Other information that "destination" can offer may be the indication of how far the ride is, however, we already have "distance" as one of our features and thus, I think we can disregard the "destination" feature in this case. I also notice that there are 3 different features describing the weather conditions, therefore, I want to pick only one of them. Based on table 2, we can see that "weather" has the least number of sub-categories, and so, each sub-category may have more significant influence on the fare price. Apart from weather, the product type also greatly determines the fare price as I have already knew from my experience using the ride-share service from both companies before. Lastly, I also think that different days in the week may also tend to have different prices since perhaps on the weekends rides are less popular because people stay at home more, for instance. In the end, all of my chosen categorical variables are: cab_type, product, source, weather, and day of week.
+
+After picking my features, I convert the categorical variables into the factor data type and prepare to partition the data. The following is the current structure of the data set to be used for model construction:
+
+```{r}
+# Pick relevant features
+char_vars <- c(names(select_if(df_combine,is.character)))
+char_vars <- char_vars[!char_vars %in% c("short_summary","long_summary","trip","destination")]
+df_combine2 <- df_combine[,c(char_vars,pick_num,"day_of_week")]
+
+# Convert categorical to factor
+for (i in char_vars){
+  df_combine2[,i] <- as.factor(df_combine2[,i])
+}
+
+str(df_combine2, width = 70, strict.width = "cut")
+
+```
+
+I also want to subset the data set into 2 sets, each containing data on only 1 company (either Uber or Lyft). I will then construct separate linear regression model for each of them to predict the fare price of each company independently. Therefore, the "cab_type" variable is no longer needed.
+
+```{r, echo=T}
+# Subset by cab_type
+df_uber3 <- subset(df_combine2, df_combine2$cab_type == "Uber")
+df_uber3$cab_type <- NULL
+
+df_lyft3 <- subset(df_combine2, df_combine2$cab_type == "Lyft")
+df_lyft3$cab_type <- NULL
+
+```
+
+### 2.2. Data partitioning and standardization
+
+Using the 80/20 ratio, I split the data set into the training and testing sets for both Uber and Lyft records:
+
+```{r, echo=T}
+# Partition data set using 80/20 split
+set.seed(888)
+
+# Method 1:
+uber_trainRatio <- createDataPartition(df_uber3$price,p=0.8,list=F,times=1)
+uber_train <- df_uber3[uber_trainRatio,]
+uber_test <- df_uber3[-uber_trainRatio,]
+
+lyft_trainRatio <- createDataPartition(df_lyft3$price,p=0.8,list=F,times=1)
+lyft_train <- df_lyft3[lyft_trainRatio,]
+lyft_test <- df_lyft3[-lyft_trainRatio,]
+```
+
+The following table shows the size of each data set:
+
+```{r}
+# Dimension of each set
+dim_traintest <- data.frame(dim(uber_train),dim(uber_test),dim(lyft_train),dim(lyft_test))
+row.names(dim_traintest) <- c("No. of Records","No. of Features")
+colnames(dim_traintest) <- c("Uber Training Set","Uber Testing Set","Lyft Training Set","Lyft Testing Set")
+knitr::kable(dim_traintest, format="latex",
+             booktabs = T,longtable=T,linesep = "",
+             caption="Table 3. Dimension of training and testing set for the linear regression model") %>%
+  kable_styling(position = "center", font_size = 10,
+                latex_options = c("striped","repeat_header")) #%>%
+  #column_spec(2, width = "11cm")
+
+```
+
+Since we are using regression, a distance based method, it is useful to standardize the numerical values so they stay relatively within the same range. Thus, I scale the numerical values using the scale() function provided in R.
+
+```{r, echo=T}
+# Normalize numerical values in each set
+num_vars3 <- pick_num[!pick_num %in% c("price")]
+uber_train[num_vars3] <- scale(uber_train[num_vars3])
+lyft_train[num_vars3] <- scale(lyft_train[num_vars3])
+
+```
+
+### 2.3. Construct linear regression models to forecast Lyft & Uber prices
+
+I create the first linear regression model to predict the Uber prices using all of my chosen features in the previous part:
+
+```{r, echo=T, cache=T}
+# Construct linear model to predict Uber prices
+lm_uber1 <- lm(data=uber_train,price~.)
+summary(lm_uber1)
+vif(lm_uber1)
+```
+
+The r-squared of the Uber training model is ``r round(summary(lm_uber1)$r.squared,4)``, which is not bad at all in terms of correlation level. From examining the Variance Inflation Factor (VIF), it seems that "weather" has the highest VIF values and thus, I want to remove this feature to avoid multi-collinearity occurrences.
+
+Next, I build another regression model using stepwise regression because I want to keep only the significant predictors and disregard the others:
+
+```{r, echo=T, cache=T}
+# Stepwise regression for Uber
+step_uber1 <- step(lm(data=uber_train,price~.-weather), direction = "both", trace = FALSE)
+summary(step_uber1)
+vif(step_uber1)
+```
+
+The Uber stepwise regression model returns a similar R-squared of ``r round(summary(step_uber1)$r.squared,4)``, however, the VIF values are now all below 5, indicating that there are no multi-collinearity instances. Since the values of the predictors are scaled beforehand, we can compare the regression coefficients of among the predictors to explore how big of an influence each of them has on the fare price. The following table shows the variable importance for determining the Uber fare price:
+
+```{r}
+# Variable importance for Uber prices
+uber_coef <- cbind(as.data.frame(summary(step_uber1)$coefficients[,1]),
+                     as.data.frame(summary(step_uber1)$coefficients[,4]))
+colnames(uber_coef) <- c("Coefficients","P-values")
+uber_coef <- uber_coef[order(abs(uber_coef$Coefficients),decreasing=T),,drop=F]
+
+uber_coef <- rownames_to_column(uber_coef, var="Predictors")
+colnames(uber_coef) <- c("Predictors","Coefficients","P-values")
+uber_coef <- uber_coef[uber_coef$Predictors != "(Intercept)",]
+#uber_coef$Significance <- ifelse(uber_coef$`P-values` < 0.05,"Yes","No")
+rownames(uber_coef) <- c(1:nrow(uber_coef))
+
+knitr::kable(uber_coef, format="latex",
+             booktabs = T,longtable=T,linesep = "",
+             caption="Table 4. Features regression coefficients from the linear model predicting Uber prices") %>%
+  kable_styling(position = "center",
+                latex_options = c("striped","repeat_header"))
+
+```
+
+From here, it seems that product, unsurprisingly, has the biggest influence on the Uber fare prices, followed by distance, source. On the other hand, considering a confidence level of 0.95 (or alpha = 0.05), cloudCover (index representing the density and thickness of clouds) is the only insignificant factor in this case.
+
+```{r}
+# Generate predictions for Uber prices
+pred_uber_train <- predict(step_uber1, uber_train, interval="predict",level=0.95)
+pred_uber_test <- predict(step_uber1, uber_test, interval="predict",level=0.95)
+
+# R-squared:
+RSQUARE = function(y_actual,y_predict){
+  a <- cor(y_actual,y_predict)^2
+  return(a)
+}
+
+uber_train_rmse <- Metrics::rmse(pred_uber_train[,1], uber_train$price) # RMSE
+uber_train_mae <- Metrics::mae(pred_uber_train[-1], uber_train$price) # MAE
+uber_train_mape <- Metrics::mape(pred_uber_train[,1], uber_train$price) # MAPE
+uber_train_r_squared <- RSQUARE(uber_train$price,pred_uber_train[,1])
+
+uber_test_rmse <- Metrics::rmse(pred_uber_test[,1], uber_test$price) # RMSE
+uber_test_mae <- Metrics::mae(pred_uber_test[,1], uber_test$price) # MAE
+uber_test_mape <- Metrics::mape(pred_uber_test[,1], uber_test$price) # MAPE
+uber_test_r_squared <- RSQUARE(uber_test$price,pred_uber_test[,1])
+
+```
+
+Similarly, I create another linear model to predict the Lyft fare prices:
+
+```{r, echo=T, cache=T}
+# Construct linear model to predict Lyft prices
+lm_lyft1 <- lm(data=lyft_train,price~.)
+summary(lm_lyft1)
+vif(lm_lyft1)
+
+```
+
+The Lyft linear regression models return a higher R-squared of ``r round(summary(lm_lyft1)$r.squared,4)`` compared to the Uber model, indicating a better fit. However, "weather" is once again attain a high VIF value and thus, needs to be removed. Using the stepwise regression method, I attempt to remove weather along with other insignificant factors.
+
+```{r, echo=T, cache=T}
+# Stepwise regression for Lyft
+step_lyft1 <- step(lm(data=lyft_train,price~.-weather), direction = "both", trace = FALSE)
+summary(step_lyft1)
+vif(step_lyft1)
+
+```
+
+Again, the R-squared value of the stepwise model does not change, but the now only the significant variables are kept and their VIF values are all lower than 5. Next, I compare the regression coefficients of all features to see their impacts on the Lyft prices:
+
+```{r}
+# Variable importance for Lyft prices
+lyft_coef <- cbind(as.data.frame(summary(step_lyft1)$coefficients[,1]),
+                     as.data.frame(summary(step_lyft1)$coefficients[,4]))
+colnames(lyft_coef) <- c("Coefficients","P-values")
+lyft_coef <- lyft_coef[order(abs(lyft_coef$Coefficients),decreasing=T),,drop=F]
+
+lyft_coef <- rownames_to_column(lyft_coef, var="Predictors")
+colnames(lyft_coef) <- c("Predictors","Coefficients","P-values")
+lyft_coef <- lyft_coef[lyft_coef$Predictors != "(Intercept)",]
+#lyft_coef$Significance <- ifelse(lyft_coef$`P-values` < 0.05,"Yes","No")
+rownames(lyft_coef) <- c(1:nrow(lyft_coef))
+
+knitr::kable(lyft_coef, format="latex",
+             booktabs = T,longtable=T,linesep = "",
+             caption="Table 5. Features regression coefficients from the linear model predicting Lyft prices") %>%
+  kable_styling(position = "center",
+                latex_options = c("striped","repeat_header"))
+
+```
+
+Similar to table 4, product, distance and source are once again, determined to be the top 3 significant factors influencing fare prices by the stepwise linear regression model.
+
+```{r}
+# Generate predictions for Lyft prices
+pred_lyft_train <- predict(step_lyft1, lyft_train, interval="predict",level=0.95)
+pred_lyft_test <- predict(step_lyft1, lyft_test, interval="predict",level=0.95)
+
+lyft_train_rmse <- Metrics::rmse(pred_lyft_train[,1], lyft_train$price) # RMSE
+lyft_train_mae <- Metrics::mae(pred_lyft_train[,1], lyft_train$price) # MAE
+lyft_train_mape <- Metrics::mape(pred_lyft_train[,1], lyft_train$price) # MAPE
+lyft_train_r_squared <- RSQUARE(lyft_train$price,pred_lyft_train[,1])
+
+lyft_test_rmse <- Metrics::rmse(pred_lyft_test[,1], lyft_test$price) # RMSE
+lyft_test_mae <- Metrics::mae(pred_lyft_test[,1], lyft_test$price) # MAE
+lyft_test_mape <- Metrics::mape(pred_lyft_test[,1], lyft_test$price) # MAPE
+lyft_test_r_squared <- RSQUARE(lyft_test$price,pred_lyft_test[,1])
+
+```
+
+### 2.4. Linear model performance
+
+After constructing the regression models, I generate the price predictions using both the training and testing set. The following table presents the performances of those models using different metrics:
+
+```{r}
+# Compare table:
+lm_compare <- as.data.frame(cbind(rbind(uber_train_rmse,uber_train_mae,uber_train_mape,uber_train_r_squared),
+                                  rbind(uber_test_rmse,uber_test_mae,uber_test_mape,uber_test_r_squared),
+                                  rbind(lyft_train_rmse,lyft_train_mae,lyft_train_mape,lyft_train_r_squared),
+                                  rbind(lyft_test_rmse,lyft_test_mae,lyft_test_mape,lyft_test_r_squared)))
+lm_compare <-
+  lm_compare %>% 
+  mutate_all(funs(round(.,3)))
+
+colnames(lm_compare) <- c("Uber Training","Uber Testing","Lyft Training","Lyft Testing")
+rownames(lm_compare) <- c("RMSE","MAE","MAPE","R-Squared")
+
+knitr::kable(lm_compare, "latex",
+             booktabs = T,longtable=T,linesep = "",
+             caption="Table 6. Linear regression model predictive performance between training and testing") %>%
+  kable_styling(position = "center", font_size = 10,
+                latex_options = c("striped","repeat_header"))
+
+```
+
+From table 6, we can see that Mean Average Percentage Errors (MAPE) are still rather high when using the testing set (around 26% to 28% error) compared to the training set (around 10% to 13% error). The R-squared for the Uber price prediction model got worse during the testing process compared to the training, however, the R-squared of the Lyft model actually improves slightly, indicating that the model does not overfit. The following scatter plot helps visualize the goodness of fit between our model predictions and the actual fare prices of both companies:
+
+```{r}
+# Visualize prediction accuracy
+par(mfcol=c(1,2),mai=c(1,1.2,0.7,0.3))
+base::plot(x=pred_uber_test[,1],y=uber_test$price,col="blue",
+     ylab="Uber price observations",xlab=paste("Uber price predictions","\n"),
+     main="",
+     #sub=expression(italic("Unit: Thousand USD")),
+     xlim=c(0,30),ylim=c(0,30))
+abline(a=0,b=1,col="red",lwd=2)
+
+plot(x=pred_lyft_test[,1],y=lyft_test$price,col="darkred",
+     ylab="Lyft price observations",xlab=paste("Lyft price predictions","\n"),
+     main="",
+     #sub=expression(italic("Unit: Thousand USD")),
+     xlim=c(0,30),ylim=c(0,30))
+abline(a=0,b=1,col="red",lwd=2)
+
+mtext(expression(bold("Figure 4. Rideshare fare price observations vs linear predictions")), 
+      side = 3, line = -1.8, outer = TRUE, cex=1.1)
+mtext(expression(italic("Unit: USD")), 
+      side = 1, line = -1.5, outer = TRUE, cex=1)
+
+```
+
+From figure 4, we can see that our linear model does not seem to fit very well with this data set and there are still huge margin or errors despite having removed the outliers. For that reason, I intend to try other predictive methods as well with the hope of predicting the fare price with higher accuracy.
+
+## 3. Predict fare price using decision tree model
+
+### 3.1. Decision tree model construction
+
+Decision tree model is very robust to outliers, and thus, I will no longer remove the outliers in fare prices when training this model. Using a similar 80/20 split, I create training and testing data sets for both Uber and Lyft. The following table shows the size of each set:
+
+```{r, cache=F}
+# Partition unscaled data
+set.seed(888)
+
+df_uber4 <- subset(df_ride4,df_ride4$cab_type == "Uber")[,c(char_vars,pick_num,"destination","day_of_week")]
+df_lyft4 <- subset(df_ride4,df_ride4$cab_type == "Lyft")[,c(char_vars,pick_num,"destination","day_of_week")]
+
+uber_trainRatio2 <- createDataPartition(df_uber4$price,p=0.8,list=F,times=1)
+lyft_trainRatio2 <- createDataPartition(df_lyft4$price,p=0.8,list=F,times=1)
+
+uber_train2 <- df_uber4[uber_trainRatio2,]
+uber_test2 <- df_uber4[-uber_trainRatio2,]
+lyft_train2 <- df_lyft4[lyft_trainRatio2,]
+lyft_test2 <- df_lyft4[-lyft_trainRatio2,]
+
+# Dimension of each set
+dim_traintest2 <- data.frame(dim(uber_train2),dim(uber_test2),dim(lyft_train2),dim(lyft_test2))
+row.names(dim_traintest2) <- c("No. of Records","No. of Features")
+colnames(dim_traintest2) <- c("Uber Training Set","Uber Testing Set","Lyft Training Set","Lyft Testing Set")
+knitr::kable(dim_traintest2, "latex",
+             booktabs = T,longtable=T,linesep = "",
+             caption="Table 7. Dimension of training and testing set for the decision tree model") %>%
+  kable_styling(position = "center", font_size = 10,
+                latex_options = c("striped","repeat_header"))
+
+```
+
+First, I created the decision tree to predict Uber prices, with complexity parameter (CP) value of 0.001:
+
+```{r, echo=T, cache=T}
+# Regression Trees for Uber
+uber_tree1 <- rpart(price ~., data = uber_train2, method = "anova", cp = 0.001)
+printcp(uber_tree1)
+
+```
+
+The tree created for Uber used 2 only variables distance and product to make 18 splits and 19 nodes. Similarly, I created another tree to predict the Lyft prices with CP = 0.001:
+
+```{r, echo=T, cache=T}
+# Regression Trees for Lyft
+lyft_tree1 <- rpart(price ~., data = lyft_train2, method = "anova", cp = 0.001)
+printcp(lyft_tree1)
+
+```
+
+Again, the decision tree model only chooses the distance and product features, but for Lyft, it creates 20 splits and 21 nodes in total. The following figure demonstrates the reduction in cross-validated errors for both models as the value of CP decreases:
+
+```{r}
+# Plot of cp vs errors
+par(mfcol=c(1,2),mai=c(1,0.9,1.5,0.4))
+plotcp(uber_tree1, main=paste("Uber Tree","\n","\n"),
+       col="red",lty=2,cex.axis=0.8)
+plotcp(lyft_tree1, main=paste("Lyft Tree","\n","\n"),
+       col="red",lty=2,cex.axis=0.8)
+mtext(expression(bold("Figure 6. Cross-validated errors and complexity parameter")), 
+      side = 3, line = -1.8, outer = TRUE, cex=1.1)
+```
+
+```{r, echo=T}
+# Pruned tree
+best_cp_uber <- uber_tree1$cptable[which.min(uber_tree1$cptable[,"xerror"]),"CP"]
+best_cp_lyft <- lyft_tree1$cptable[which.min(lyft_tree1$cptable[,"xerror"]),"CP"]
+best_cp_uber==best_cp_lyft
+
+```
+
+The complexity parameter values that generates the lowest cross-validated error for uber and lyft prices are both ``r best_cp_uber``.
+
+Next, I want to examine the relative importance of the features as determined by the decision tree model. In decision trees, a variable may appear in the tree many times, either as a primary variable in the root node, or as a surrogate variable in the decision node. "An overall measure of variable importance is the sum of the goodness of split measures for each split for which it was the primary variable, plus goodness * (adjusted agreement) for all splits in which it was a surrogate" (Therneau & Atkinson, 2022). In regression trees, the goodness of split measure is often the gap between the observations and the model predictions. This measure is then scaled to sum up to 100%, representing the proportion of influence each variable has on the dependent variable. The figure below helps visualize these importance measures between features:
+
+```{r}
+# Feature Importance
+uber_imp <- as.data.frame(uber_tree1$variable.importance)
+uber_imp$Perc.Imp <- uber_imp$`uber_tree1$variable.importance`/sum(uber_imp$`uber_tree1$variable.importance`)
+
+lyft_imp <- as.data.frame(lyft_tree1$variable.importance)
+lyft_imp$Perc.Imp <- lyft_imp$`lyft_tree1$variable.importance`/sum(lyft_imp$`lyft_tree1$variable.importance`)
+
+uber_imp <- uber_imp %>% 
+  tibble::rownames_to_column() %>% 
+  dplyr::rename("Variables" = rowname) %>% 
+  dplyr::arrange(Perc.Imp) %>%
+  dplyr::mutate(Variables = forcats::fct_inorder(Variables))
+colnames(uber_imp)[2] <- "Variable Importance"
+
+lyft_imp <- lyft_imp %>% 
+  tibble::rownames_to_column() %>% 
+  dplyr::rename("Variables" = rowname) %>% 
+  dplyr::arrange(Perc.Imp) %>%
+  dplyr::mutate(Variables = forcats::fct_inorder(Variables))
+colnames(lyft_imp)[2] <- "Variable Importance"
+
+```
+```{r}
+# Feature importance plot
+plot1 <- ggplot(uber_imp) +
+  geom_col(aes(x = Variables, y = Perc.Imp*100, fill=Variables), show.legend = F) +
+  coord_flip() + #scale_fill_brewer(palette="Spectral")
+  labs(title=paste0("Uber fare price")) +
+  ylab("Relative Importance (%)") + xlab(paste("")) + theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+plot2 <- ggplot(lyft_imp) +
+  geom_col(aes(x = Variables, y = Perc.Imp*100, fill=Variables), show.legend = F) +
+  coord_flip() + scale_fill_viridis(discrete = TRUE) +
+  labs(title=paste0("Lyft fare price")) +
+  ylab("Relative Importance (%)") + xlab(paste("")) + theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+plot3 <- ggarrange(plot1, plot2, ncol=2, nrow=1)
+annotate_figure(plot3, top = text_grob("Figure 7. Variable importance from regression trees", 
+               color = "black", face = "bold", size = 14))
+
+```
+
+From figure 5, we can see that the regression trees determine product is the most significant factor affecting fare prices, followed by distance, destination and source for both Uber and Lyft. Other features seem to have an inconsiderable impact on the price of the ride-sharing service.
+
+### 3.2. Decision tree model performance
+
+After having constructed the regression trees, I then use these models to generate pricing predictions using both the training and testing sets of Uber & Lyft. The table below summarizes the predictive accuracy of the model outputs:
+
+```{r}
+# Fit with training and testing set
+uber_tree_train <- as.data.frame(predict(uber_tree1,newdata = uber_train2))
+uber_tree_test <- as.data.frame(predict(uber_tree1,newdata = uber_test2))
+uber_tree_train <- uber_tree_train[,1]
+uber_tree_test <- uber_tree_test[,1]
+
+lyft_tree_train <- as.data.frame(predict(lyft_tree1,newdata = lyft_train2))
+lyft_tree_test <- as.data.frame(predict(lyft_tree1,newdata = lyft_test2))
+lyft_tree_train <- lyft_tree_train[,1]
+lyft_tree_test <- lyft_tree_test[,1]
+
+# Calculate accuracy metrics
+uber_tree_train_rmse <- Metrics::rmse(uber_tree_train, uber_train2$price) # RMSE
+uber_tree_train_mae <- Metrics::mae(uber_tree_train, uber_train2$price) # MAE
+uber_tree_train_mape <- Metrics::mape(uber_tree_train, uber_train2$price) # MAPE
+uber_tree_train_r_squared <- RSQUARE(uber_train2$price,uber_tree_train)
+
+uber_tree_test_rmse <- Metrics::rmse(uber_tree_test, uber_test2$price) # RMSE
+uber_tree_test_mae <- Metrics::mae(uber_tree_test, uber_test2$price) # MAE
+uber_tree_test_mape <- Metrics::mape(uber_tree_test, uber_test2$price) # MAPE
+uber_tree_test_r_squared <- RSQUARE(uber_test2$price,uber_tree_test)
+
+lyft_tree_train_rmse <- Metrics::rmse(lyft_tree_train, lyft_train2$price) # RMSE
+lyft_tree_train_mae <- Metrics::mae(lyft_tree_train, lyft_train2$price) # MAE
+lyft_tree_train_mape <- Metrics::mape(lyft_tree_train, lyft_train2$price) # MAPE
+lyft_tree_train_r_squared <- RSQUARE(lyft_train2$price,lyft_tree_train)
+
+lyft_tree_test_rmse <- Metrics::rmse(lyft_tree_test, lyft_test2$price) # RMSE
+lyft_tree_test_mae <- Metrics::mae(lyft_tree_test, lyft_test2$price) # MAE
+lyft_tree_test_mape <- Metrics::mape(lyft_tree_test, lyft_test2$price) # MAPE
+lyft_tree_test_r_squared <- RSQUARE(lyft_test2$price,lyft_tree_test)
+
+```
+
+```{r}
+# Compare table:
+tree_compare <- as.data.frame(
+  cbind(rbind(uber_tree_train_rmse,uber_tree_train_mae,uber_tree_train_mape,uber_tree_train_r_squared),
+        rbind(uber_tree_test_rmse,uber_tree_test_mae,uber_tree_test_mape,uber_tree_test_r_squared),
+        rbind(lyft_tree_train_rmse,lyft_tree_train_mae,lyft_tree_train_mape,lyft_tree_train_r_squared),
+        rbind(lyft_tree_test_rmse,lyft_tree_test_mae,lyft_tree_test_mape,lyft_tree_test_r_squared)))
+
+tree_compare <-
+  tree_compare %>% 
+  mutate_all(funs(round(.,3)))
+
+colnames(tree_compare) <- c("Uber Training","Uber Testing","Lyft Training","Lyft Testing")
+rownames(tree_compare) <- c("RMSE","MAE","MAPE","R-Squared")
+
+knitr::kable(lm_compare, "latex",
+             booktabs = T,longtable=T,linesep = "",
+             caption="Table 8. Regression tree model predictive performance between training and testing") %>%
+  kable_styling(position = "center", font_size=10,
+                latex_options = c("striped","repeat_header"))
+
+```
+
+From table 8, we can observe that the decision tree models have been able to generate higher r-squared values when predicting both Uber and Lyft prices, along with lower overall RMSE and MAPE. The testing predictions also show some improvements in accuracy compared to the training ones since R-squared slightly increases but MAPE remains similar or lower. The following scatterplots help visualize the predictions fitness with the observations in fare prices:
+
+```{r}
+# Visualize prediction accuracy
+par(mfcol=c(1,2),mai=c(1,1.2,0.7,0.3))
+base::plot(x=uber_tree_test,y=uber_test2$price,col="blue",
+     ylab="Uber price observations",xlab=paste("Uber price predictions","\n"),
+     main="",
+     #sub=expression(italic("Unit: Thousand USD")),
+     xlim=c(0,60),ylim=c(0,60))
+abline(a=0,b=1,col="red",lwd=2)
+
+plot(x=lyft_tree_test,y=lyft_test2$price,col="darkred",
+     ylab="Lyft price observations",xlab=paste("Lyft price predictions","\n"),
+     main="",
+     #sub=expression(italic("Unit: Thousand USD")),
+     xlim=c(0,60),ylim=c(0,60))
+abline(a=0,b=1,col="red",lwd=2)
+
+mtext(expression(bold("Figure 8. Rideshare fare price observations vs regression tree predictions")), 
+      side = 3, line = -1.8, outer = TRUE, cex=1.1)
+mtext(expression(italic("Unit: USD")), 
+      side = 1, line = -1.5, outer = TRUE, cex=1)
+
+```
+
+From figure 8, we see that the points are not too densely scattered around the diagonal red lines, similar to what we have seen in figure 4. This represents that the pricing predictions made by the regression trees, despite the progress made versus the linear regression method, are still quite far off from the actual observations.
+
+## 4. Predict whether price will surge using logistic regression model
+
+In this section we will focus on a new target variable "surge_multipler". From my understanding, the actual price = standard price * surge multiplier. Thus, this variable determines whether the actual price will be surged (multiplier > 1) or not (multiplier = 1). First, we examine the distribution of "surge_multipler" across the 2 companies Lyft & Uber:
+
+```{r}
+# Distribution of surge multiplier
+# str(df_ride4, give.attr = F, width = 70, strict.width = "cut")
+table(df_ride4$cab_type,df_ride4$surge_multiplier)
+
+```
+
+From here, we can see that the surge multiplier only seems to exist for Lyft, and thus, we will focus only only predicting price surge for Lyft with this data set. In addition, the value of "surge_multipler" = 1 accounts for majority of the data, while the highest surge is 3 times the standard price. Next, we subset the original data set into a smaller set containing only Lyft's data and create a new target categorical feature "lyft_surge" based on the numerical values of "surge_multipler":
+
+```{r, echo=T}
+# Subset original data for only Lyft's data
+df_lyft_surge <- df_ride4[df_ride4$cab_type=="Lyft",c(char_vars,pick_num,
+                                                      "day_of_week",
+                                                      "surge_multiplier")]
+df_lyft_surge <- df_lyft_surge[,!names(df_lyft_surge) %in% "cloudCover"]
+df_lyft_surge$cab_type <- NULL
+
+# Create new target variable lyft_surge and remove irrelevant ones
+df_lyft_surge$price_surge <- if_else(df_lyft_surge$surge_multiplier > 1,1,0)
+char_vars_lyft <- names(select_if(df_lyft_surge,is.character))
+df_lyft_surge$surge_multiplier <- NULL
+df_lyft_surge$price <- NULL
+
+# Convert categorical to factor
+for (i in char_vars_lyft){
+  df_lyft_surge[,i] <- as.factor(df_lyft_surge[,i])
+}
+
+# Scale numerical features
+num_vars_lyft <- names(select_if(df_lyft_surge,is.numeric))
+num_vars_lyft <- num_vars_lyft[!num_vars_lyft %in% c("price_surge")]
+df_lyft_surge2 <- df_lyft_surge
+df_lyft_surge2[num_vars_lyft] <- scale(df_lyft_surge[num_vars_lyft])
+
+# Overview of current data set
+str(df_lyft_surge2, width = 70, strict.width = "cut")
+```
+
+### 4.1. Remove class bias with undersampling
+
+The current distribution of the new target feature "price_surge" is as follow:
+
+```{r}
+#df_lyft_surge2$price_surge <- factor(df_lyft_surge2$price_surge, levels=c(0,1))
+#str(df_lyft_surge2[,!names(df_lyft_surge2) %in% "destination"], width = 70, strict.width = "cut")
+table(df_lyft_surge2$price_surge)
+```
+
+We can see that the classes of the dependent variable is currently unbalanced, with the majority being "1" compared to "0". Thus, we use the undersampling method in order to balance out the classes:
+
+```{r, echo=T}
+# Balance classes of dependent variable
+df_surge_freq <- as.data.frame(t(as.data.frame(table(df_lyft_surge2$price_surge))))
+rownames(df_surge_freq) <- c("Price-Surge categories","Frequency")
+colnames(df_surge_freq) <- c("Not-surge","Surge")
+df_surge_freq$`Not-surge` <- as.numeric(df_surge_freq$`Not-surge`)
+df_surge_freq$Surge <- as.numeric(df_surge_freq$Surge)
+
+df_surge <- df_lyft_surge2[df_lyft_surge2$price_surge == 1,]
+df_nosurge <- df_lyft_surge2[df_lyft_surge2$price_surge == 0,]
+
+no_bias_row <- min(nrow(df_surge),nrow(df_nosurge))
+private_yes_nobias <- head(df_nosurge,no_bias_row)
+df_col_equal <- rbind(private_yes_nobias,df_surge)
+table(df_col_equal$price_surge)
+```
+```{r}
+# df_surge_freq2 <- as.data.frame(t(as.data.frame(table(df_col_equal$price_surge))))
+# rownames(df_surge_freq2) <- c("Price-Surge categories","Frequency")
+# colnames(df_surge_freq2) <- c("Not-surge","Surge")
+# df_surge_freq2$`Not-surge` <- as.numeric(df_surge_freq2$`Not-surge`)
+# df_surge_freq2$Surge <- as.numeric(df_surge_freq2$Surge)
+
+```
+
+### 4.2. Logistic regression model construction
+
+Now that the classes are balanced, we can partition the data set for training and testing and fit a stepwise logistic regression model to predict whether price will surge:
+
+```{r, echo=T, cache=T}
+# Partition unscaled data
+set.seed(888)
+surge_trainRatio <- createDataPartition(df_col_equal$price_surge,p=0.8,list=F,times=1)
+surge_train <- df_col_equal[surge_trainRatio,]
+surge_test <- df_col_equal[-surge_trainRatio,]
+
+# Stepwise logistic regression model
+logit_model <- glm(price_surge~., data=surge_train, family=binomial(link="logit")) %>% stepAIC(trace = FALSE)
+```
+```{r}
+# Decision Trees using rpart
+# surge_tree1 <- rpart(price_surge ~., data = surge_train, method = "class", cp = 0.1)
+# printcp(surge_tree1)
+# options(scipen=0)
+coef_tbl <- summary(logit_model)$coef
+coef_tbl[,4] <- round(coef_tbl[,4],5)
+coef_tbl[,c(1,2,4)]
+```
+
+Similar to linear regression, we check the VIF values to see if there are any signs of multicollinearity issues.
+
+```{r, echo=T}
+# Check VIF values
+vif(logit_model)
+```
+
+Since all VIFs are less than 5, we can be fairly confident that there are no correlated features in the model and move on with our analysis. Based on the model output, we can observe that most of the independent predictors are deemed significant (based on their P-values) except for "product" feature. To better visualize this information, the variable importance calculated for each feature is plotted below:
+
+```{r}
+# Variable importance for Uber prices
+surge_varImp <- as.data.frame(varImp(logit_model, scale = F))
+surge_varImp <- surge_varImp[order(abs(surge_varImp$Overall),decreasing=T),,drop=F]
+surge_varImp <- rownames_to_column(surge_varImp, var="Variables")
+surge_varImp$RelativeImp <- surge_varImp$Overall/sum(surge_varImp$Overall)
+rownames(surge_varImp) <- c(1:nrow(surge_varImp))
+
+ggplot(surge_varImp) +
+  geom_col(aes(x = reorder(Variables,RelativeImp), y = RelativeImp*100, fill=reorder(Variables,RelativeImp)), show.legend = F) +
+  coord_flip() +
+  labs(title=expression(bold("Figure 9. Variable importance of logistic regression model"))) +
+  ylab("Relative Importance (%)") + xlab(paste("")) + theme_bw() +
+  theme(plot.title = element_text(hjust = 1.5))
+
+```
+
+From figure 9, we can determine that the source locations of the rides, along with weather conditions, are the most influential factors affecting whether prices will surge or not. Specifically, rides that start from North End, Haymarket Square, North Station, West End and Financial District are among the top 5 locations that are most likely to experience price surges. This makes sense since all of these  locations are often heavily-crowded, which could cause the demand for ride-shares to temporarily outnumbers the supply of drivers at these particular locations during high traffic hours. In addition, cloudy and rainy weathers may also contribute a small part in the surging of prices due to unfavorable road conditions.
+
+### 4.3. Logistic regression model performance
+
+After fitting the training set, the next step is to generate predictions for the testing set. The training and testing results from the logistic regression model are presented below:
+
+```{r, echo=T}
+# Generate predictions using the training set
+logit_predict_train <- predict(logit_model, surge_train, type="response")
+
+# Generate predictions using the testing set
+logit_predict_test <- predict(logit_model, surge_test, type="response")
+```
+
+* The training results:
+
+```{r}
+# Generate predictions using the training set
+#logit_predict_train <- predict(logit_model, surge_train, type="response")
+
+# Calculate the optimal cutoff for the test set
+optCutOff1 <- optimalCutoff(surge_train$price_surge, logit_predict_train)[1]
+#cat("Optimal cutoff (threshold) for the training set is = ", optCutOff1, "\n")
+
+# Create confusion matrix on the training set:
+pred1 <- as.data.frame(logit_predict_train)
+pred1$logit_predict_train[pred1$logit_predict_train < optCutOff1] <- 0
+pred1$logit_predict_train[pred1$logit_predict_train >= optCutOff1] <- 1
+
+confusion_matrix_train <- confusionMatrix(as.factor(surge_train$price_surge),
+                                          as.factor(pred1$logit_predict_train),positive="1")
+#confusion_matrix_train <- as.tibble(confusion_matrix_train$table)
+confusion_matrix_train$byClass
+```
+
+* The testing results:
+
+```{r}
+# Generate predictions using the testing set
+#logit_predict_test <- predict(logit_model, surge_test, type="response")
+
+# Calculate the optimal cutoff for the testing set
+optCutOff2 <- optimalCutoff(surge_test$price_surge, logit_predict_test)[1]
+#cat("Optimal cutoff (threshold) for the testing set is = ", optCutOff2, "\n")
+
+# Create confusion matrix on the training set:
+pred2 <- as.data.frame(logit_predict_test)
+pred2$logit_predict_test[pred2$logit_predict_test < optCutOff2] <- 0
+pred2$logit_predict_test[pred2$logit_predict_test >= optCutOff2] <- 1
+
+confusion_matrix_test <- confusionMatrix(as.factor(surge_test$price_surge),
+                                          as.factor(pred2$logit_predict_test),positive="1")
+
+#confusion_matrix_test <- as.tibble(confusion_matrix_test$table)
+confusion_matrix_test$byClass
+```
+
+* Both results are better visualized using the 2 confusion matrices below:
+
+```{r}
+# Plot 2 cfs matrix side by side
+logit_cfs_train <- plot_confusion_matrix(as.tibble(confusion_matrix_train$table),
+                      #font_counts = font(size = 6),
+                      target_col = "Reference",
+                      prediction_col = "Prediction",
+                      counts_col = "n",
+                      add_row_percentages = FALSE,
+                      add_col_percentages = FALSE,
+                      place_x_axis_above = FALSE,
+                      add_normalized = FALSE,
+                      palette = "Reds") +
+   labs(x = "Observation", y = "Prediction",
+        subtitle=paste0("Training Results\n","(Optimal cutoff = ",round(optCutOff1,3),")")) +
+   theme(plot.subtitle = element_text(hjust = 0.5))
+
+logit_cfs_test <- plot_confusion_matrix(as.tibble(confusion_matrix_test$table),
+                      #font_counts = font(size = 6),
+                      target_col = "Reference",
+                      prediction_col = "Prediction",
+                      counts_col = "n",
+                      add_row_percentages = FALSE,
+                      add_col_percentages = FALSE,
+                      place_x_axis_above = FALSE,
+                      add_normalized = FALSE,
+                      palette = "Greens") +
+   labs(x = "Observation", y = "Prediction",
+        subtitle=paste0("Testing Results\n","(Optimal cutoff = ",round(optCutOff2,3),")")) +
+   theme(plot.subtitle = element_text(hjust = 0.5))
+
+ggarrange(logit_cfs_train, logit_cfs_test,
+          labels = "Figure 10. Confusion matrix from the training and testing predictions",
+          ncol = 2, nrow = 1,hjust = -0.01,vjust= 1.6)
+
+```
+
+The optimal cutoff values that generate the highest accuracy are employed in this model, where the cutoff point is ``r round(optCutOff1,3)`` for the training set and ``r round(optCutOff2,3)`` for the testing set. From there, we can see that for the training model, the prediction accuracy is ``r paste0(round(confusion_matrix_train$overall[1],4)*100,'%')`` while the accuracy for the testing set is slightly higher, achieving ``r paste0(round(confusion_matrix_test$overall[1],4)*100,'%')``. In addition, the majority of the misclassifications stem from Type 2 errors (or False Negatives cases), meaning that our model tends to predict that price does not surge when in reality, it does. This shows that our logistic regression model is better at predicting when the price will surge compared to predicting when it will not surge.
+
+Finally, let's examine the Area Under the Curve (AUC) values of each model. Since the AUC indicates how strong the model is at distinguishing between classes compared to making random 50-50 predictions, we can compare the true predictive power of these models by looking at their ROC curves:
+
+```{r}
+# AUC calculation:
+ROC_PLOT <- roc(surge_train$price_surge, logit_predict_train)
+ROC_PLOT2 <- roc(surge_test$price_surge, logit_predict_test)
+
+# ROC curves
+plot(ROC_PLOT, col = "blue",xlab = "False Positivity Rate (1-Specificity)",
+     ylab = "True Positivity Rate (Sensitivity)",print.auc = TRUE)
+
+plot(ROC_PLOT2, col = "red",xlab = "False Positivity Rate (1-Specificity)",
+     ylab = "True Positivity Rate (Sensitivity)",print.auc = TRUE,print.auc.y = .4,add = TRUE)
+
+legend("bottomright",c("Training ROC","Testing ROC"),lty=1,col=c("blue","red"),cex=0.8)
+
+mtext(expression(bold("Figure 11. ROC Curves from the training and testing set")),
+     side = 3, line = -1.5, outer = TRUE, cex=1.2)
+
+```
+
+From figure 11, we can see that our testing model performs slightly better than our training model in terms of AUC (``r round(ROC_PLOT2$auc,3)`` vs ``r round(ROC_PLOT$auc,3)``), showing that our logistic regression model does not overfit with the training set and can work relatively well with newly introduced data.
+
+# III. CONCLUSION
+
+Based on the analysis of this data set, I have learned of a lot about the various factors influencing fare prices of Uber and Lyft. All in all, I found that the product type, the trip distance, and starting location of the ride accounts for the heaviest influence on fare prices for both Uber & Lyft. In addition, the weather conditions are mostly insignificant factors in terms of setting the ride prices. When constructing prediction models to forecast price, I see that the decision tree model performs relatively better than the linear regression model. Although both models manage to generate quite good R-square measures (around 0.8 to 0.9), the predictions generated are still not close enough to the actual observations to be deem meaningful. However, I still believe I have been able to discover the features impacting fare prices the most after conducting my analysis. 
+
+As for the classification model created to predict whether price will surge, I have determined that "source" (starting point) and "weather" are the 2 main influences on the surge in price. If users book a ride from North End, Haymarket Square, or South Station, which are quite densely-populated central areas of Boston, they are likely to pay more for the rides due to the price surge mechanism. Moreover, if the weather is either cloudy or rainy, the price will also be likely to surge as well, and like we mentioned earlier, the product seems to have no impact on whether the price will surge.  
+
+Overall, I think these are some interesting insights that we found after analyzing 2 different target features, "price" and "price surge". As a customer, I will focus on these factors to reduce the ride fares whenever possible, such as using shared Uber/Lyft services, travel short distance and choose pick-up location at heavily populated areas to increase the likelihood of having sufficient numbers of Uber/Lyft drivers around.
+
+\newpage
+# IV. REFERENCES
+\setlength{\parindent}{-0.2in}
+\setlength{\leftskip}{0.2in}
+\setlength{\parskip}{8pt}
+\noindent
+
+_Uber and Lyft Dataset Boston, MA | Kaggle._ (n.d.). Kaggle: Your Machine Learning and Data Science Community. Retrieved December 14, 2022, from https://www.kaggle.com/datasets/brllrb/uber-and-lyft-dataset-boston-ma
+
+Therneau, T. M., &amp; Atkinson, E. J. (2022, January 24). _An Introduction to Recursive Partitioning using the RPART Routines._ The Comprehensive R Archive Network. Retrieved December 14, 2022, from https://cran.r-project.org/web/packages/rpart/vignettes/longintro.pdf 
