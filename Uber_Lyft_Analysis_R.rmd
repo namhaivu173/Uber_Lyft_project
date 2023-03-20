@@ -46,10 +46,6 @@ list.of.packages <- c("ggplot2","pls","glmnet","Matrix","smbinning","ROCR","cvms
                       "Information","MASS","e1071","class","pROC","corrplot","mltools","rattle","tinytex")
 install_load_package(list.of.packages)
 
-#tlmgr_search('/times.sty')   # search for times.sty
-#tlmgr_install('psnfss')      # install the psnfss package
-#tlmgr_update()               # update everything
-
 ```
 
 ```{r wrap-hook, include=F}
@@ -87,7 +83,7 @@ knitr::opts_chunk$set(echo = F, tidy = F, message=F, warning=F, fig.align="cente
 \newpage
 # I. INTRODUCTION
 
-In this assignment, I aim to utilize various statistical methodologies to perform exploratory analysis as well as predictive analysis on the ride share data set containing ride-sharing records of 2 companies Uber and Lyft in the city of Boston during the month of November and December in 2018, along with the weather information at the time of transaction. Primarily, I will focus on answering 3 main questions:
+In this project, I aim to utilize various statistical methodologies to perform exploratory analysis as well as predictive analysis on the ride share data set containing ride-sharing records of 2 companies Uber and Lyft in the city of Boston during the month of November and December in 2018, along with the weather information at the time of transaction. Primarily, I will focus on answering 3 main questions:
 
 * Can we predict the fare prices of Uber & Lyft accurately based on the given information? 
 * What sort of factors influence the changes in price, and how strong are these influences relative to one another?
@@ -97,7 +93,7 @@ In this assignment, I aim to utilize various statistical methodologies to perfor
 
 ## 1. Data cleaning & feature engineering
 
-First, let's import the ride sharing data set. Below is the overview of the original data set:
+First, let's import the ride sharing data set. Below is the overview of the data set:
 
 ```{r, echo=T}
 # Import data set and treat blank cells as NA
