@@ -26,8 +26,7 @@ Please view the Jupyter Notebook file using NBViewer for the best experience: ht
 
 ## III. Files shared:
 
-- IPython Notebook: comprehensive project that fulfills all main goals
-- R: mini-version that contains only EDA section & logistic regression model
-- R Image Outputs folder: contains visualization outputs from the R script
-- Compressed .rar file: contains the data set used for this project
-- GASREGW.csv: contains the weekly price of regular gasoline, used in the R script as an additional feature
+- .ipynb: presents a comprehensive report that fulfills all main goals (using Python)
+- .rmd: presents a smaller report that focuses solely on the predictive modelling portion (using R)
+- .pdf: the report knitted by the R Markdown (.rmd) script
+- .rar: contains the data set used for this project
