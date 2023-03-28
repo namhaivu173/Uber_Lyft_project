@@ -27,6 +27,7 @@ Please view the Jupyter Notebook file [in HTML format](https://github.com/namhai
 ## III. Files shared:
 
 - .ipynb: presents a comprehensive report that fulfills all main goals (using Python)
+- .html: the printed output of the .ipynb script
 - .rmd: presents a smaller report that focuses solely on the predictive modelling portion (using R)
 - .pdf: the report knitted by the R Markdown (.rmd) script
 - .rar: contains the data set used for this project
