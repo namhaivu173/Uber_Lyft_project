@@ -1,3 +1,5 @@
 *.[Rr]md linguist-detectable
 *.[Rr] linguist-language=R
 *.html linguist-detectable=FALSE
+*.html linguist-generated=FALSE
+*.html linguist-documentation=FALSE
