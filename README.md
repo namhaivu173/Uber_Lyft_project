@@ -10,7 +10,7 @@ alt="" title="Image Source: https://www.ridester.com/uber-vs-lyft/" width="80%" 
 <sup><i>(Image Source: https://www.ridester.com/uber-vs-lyft/)</i></sup>
 </p>
 
-<b>Since the Jupyter Notebook file is not rendered properly on GitHub, please view it [in HTML format](https://github.com/namhaivu173/Uber_Lyft_project/blob/main/Uber_Lyft_Analysis_Python.html) or with [NBViewer](https://nbviewer.org/github/namhaivu173/Uber_Lyft_project/blob/main/Uber_Lyft_Analysis_Python.ipynb) for the best experience</b>
+<b>Since the Jupyter Notebook file is not rendered properly on GitHub, please view it [in HTML format](https://github.com/namhaivu173/Uber_Lyft_project/blob/main/Uber_Lyft_Analysis_Python.html) or [with NBViewer](https://nbviewer.org/github/namhaivu173/Uber_Lyft_project/blob/main/Uber_Lyft_Analysis_Python.ipynb) for the best experience</b>
 
 ## I. Data set:
 
