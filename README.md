@@ -24,7 +24,7 @@ alt="" title="Image Source: https://www.ridester.com/uber-vs-lyft/" width="80%" 
 - Perform data cleaning, EDA, and conduct hypothesis tests to explore the main differences in characteristics between Lyft & Uber services
 - Visualize insights using interactive maps and charts
 - Construct regression models to examine the major factors influencing the prices of Lyft & Uber
-- Construct classificatation models to examine the major factors determining whether prices will surge or not
+- Construct classification models to examine the major factors determining whether prices will surge or not
 
 ## III. Files shared:
 
